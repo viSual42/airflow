@@ -47,6 +47,7 @@ login_manager.login_message = None
 log = LoggingMixin().log
 PY3 = version_info[0] == 3
 
+client_auth = None
 
 class AuthenticationError(Exception):
     pass
