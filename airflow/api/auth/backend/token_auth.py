@@ -30,7 +30,7 @@ _TOKEN = None
 
 def init_app(app):
     global _TOKEN
-    _TOKEN = conf.get('api', 'api_key')
+    _TOKEN = conf.get('api', 'api_secret_key')
     #log.info("Token set %s", _TOKEN)
     
 

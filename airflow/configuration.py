@@ -500,6 +500,7 @@ else:
     FERNET_KEY = ''
 
 SECRET_KEY = b64encode(os.urandom(16)).decode('utf-8')
+API_SECRET_KEY = b64encode(os.urandom(16)).decode('utf-8')
 
 TEMPLATE_START = (
     '# ----------------------- TEMPLATE BEGINS HERE -----------------------')
