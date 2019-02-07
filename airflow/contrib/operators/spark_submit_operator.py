@@ -83,6 +83,9 @@ class SparkSubmitOperator(BaseOperator):
     :type env_vars: dict
     :param verbose: Whether to pass the verbose flag to spark-submit process for debugging
     :type verbose: bool
+    :param spark_binary: The command to use for spark submit.
+                         Some distros may use spark2-submit.
+    :type spark_binary: string
     """
     template_fields = ('_name', '_application_args', '_packages')
     ui_color = WEB_COLORS['LIGHTORANGE']
@@ -94,6 +97,7 @@ class SparkSubmitOperator(BaseOperator):
                  conn_id='spark_default',
                  files=None,
                  py_files=None,
+                 archives=None,
                  driver_classpath=None,
                  jars=None,
                  java_class=None,
@@ -111,6 +115,7 @@ class SparkSubmitOperator(BaseOperator):
                  application_args=None,
                  env_vars=None,
                  verbose=False,
+                 spark_binary="spark-submit",
                  *args,
                  **kwargs):
         super(SparkSubmitOperator, self).__init__(*args, **kwargs)
@@ -118,6 +123,7 @@ class SparkSubmitOperator(BaseOperator):
         self._conf = conf
         self._files = files
         self._py_files = py_files
+        self._archives = archives
         self._driver_classpath = driver_classpath
         self._jars = jars
         self._java_class = java_class
@@ -135,6 +141,7 @@ class SparkSubmitOperator(BaseOperator):
         self._application_args = application_args
         self._env_vars = env_vars
         self._verbose = verbose
+        self._spark_binary = spark_binary
         self._hook = None
         self._conn_id = conn_id
 
@@ -147,6 +154,7 @@ class SparkSubmitOperator(BaseOperator):
             conn_id=self._conn_id,
             files=self._files,
             py_files=self._py_files,
+            archives=self._archives,
             driver_classpath=self._driver_classpath,
             jars=self._jars,
             java_class=self._java_class,
@@ -163,7 +171,8 @@ class SparkSubmitOperator(BaseOperator):
             num_executors=self._num_executors,
             application_args=self._application_args,
             env_vars=self._env_vars,
-            verbose=self._verbose
+            verbose=self._verbose,
+            spark_binary=self._spark_binary
         )
         self._hook.submit(self._application)
 

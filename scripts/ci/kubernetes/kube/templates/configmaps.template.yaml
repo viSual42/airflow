@@ -45,10 +45,6 @@ data:
     # how often the scheduler should run (in seconds).
     scheduler_heartbeat_sec = 5
 
-    # after how much time should the scheduler terminate in seconds
-    # -1 indicates to run continuously (see also num_runs)
-    run_duration = -1
-
     # after how much time a new DAGs should be picked up from the filesystem
     min_file_process_interval = 0
 
@@ -122,7 +118,7 @@ data:
     expose_config = False
 
     # Set to true to turn on authentication:
-    # https://airflow.incubator.apache.org/security.html#web-authentication
+    # https://airflow.apache.org/security.html#web-authentication
     authenticate = False
 
     # Filter the list of dags by owner name (requires authentication to be enabled)
@@ -157,9 +153,6 @@ data:
 
     # Consistent page size across all listing views in the UI
     page_size = 100
-
-    # Use FAB-based webserver with RBAC feature
-    rbac = True
 
     [smtp]
     # If you want airflow to send emails on retries, failure, and you want to use

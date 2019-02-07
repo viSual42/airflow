@@ -62,18 +62,18 @@ class AzureContainerInstancesOperator(BaseOperator):
     :type image: str
     :param region: the region wherein this container instance should be started
     :type region: str
-    :param: environment_variables: key,value pairs containing environment variables
-        which will be passed to the running container
-    :type: environment_variables: dict
-    :param: volumes: list of volumes to be mounted to the container.
+    :param environment_variables: key,value pairs containing environment
+        variables which will be passed to the running container
+    :type environment_variables: dict
+    :param volumes: list of volumes to be mounted to the container.
         Currently only Azure Fileshares are supported.
-    :type: volumes: list[<conn_id, account_name, share_name, mount_path, read_only>]
-    :param: memory_in_gb: the amount of memory to allocate to this container
-    :type: memory_in_gb: double
-    :param: cpu: the number of cpus to allocate to this container
-    :type: cpu: double
-    :param: command: the command to run inside the container
-    :type: command: str
+    :type volumes: list[<conn_id, account_name, share_name, mount_path, read_only>]
+    :param memory_in_gb: the amount of memory to allocate to this container
+    :type memory_in_gb: double
+    :param cpu: the number of cpus to allocate to this container
+    :type cpu: double
+    :param command: the command to run inside the container
+    :type command: str
 
     :Example:
 
@@ -186,7 +186,7 @@ class AzureContainerInstancesOperator(BaseOperator):
                 raise AirflowException("Container had a non-zero exit code, %s"
                                        % exit_code)
 
-        except CloudError as e:
+        except CloudError:
             self.log.exception("Could not start container group")
             raise AirflowException("Could not start container group")
 
@@ -216,7 +216,7 @@ class AzureContainerInstancesOperator(BaseOperator):
                     try:
                         logs = ci_hook.get_logs(resource_group, name)
                         last_line_logged = self._log_last(logs, last_line_logged)
-                    except CloudError as err:
+                    except CloudError:
                         self.log.exception("Exception while getting logs from "
                                            "container instance, retrying...")
 
