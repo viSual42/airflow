@@ -82,13 +82,13 @@ if conf.getboolean('scheduler', 'statsd_on'):
 else:
     Stats = DummyStatsLogger
 
-HEADER = """\
-  ____________       _____________
- ____    |__( )_________  __/__  /________      __
-____  /| |_  /__  ___/_  /_ __  /_  __ \_ | /| / /
-___  ___ |  / _  /   _  __/ _  / / /_/ /_ |/ |/ /
- _/_/  |_/_/  /_/    /_/    /_/  \____/____/|__/
- """
+HEADER = '\n'.join([
+    r'  ____________       _____________',
+    r' ____    |__( )_________  __/__  /________      __',
+    r'____  /| |_  /__  ___/_  /_ __  /_  __ \_ | /| / /',
+    r'___  ___ |  / _  /   _  __/ _  / / /_/ /_ |/ |/ /',
+    r' _/_/  |_/_/  /_/    /_/    /_/  \____/____/|__/',
+])
 
 LOGGING_LEVEL = logging.INFO
 
@@ -170,18 +170,15 @@ def configure_orm(disable_connection_pool=False):
         except conf.AirflowConfigException:
             pool_recycle = 1800
 
-        log.info("setting.configure_orm(): Using pool settings. pool_size={}, "
-                 "pool_recycle={}".format(pool_size, pool_recycle))
+        log.info("settings.configure_orm(): Using pool settings. pool_size={}, "
+                 "pool_recycle={}, pid={}".format(pool_size, pool_recycle, os.getpid()))
         engine_args['pool_size'] = pool_size
         engine_args['pool_recycle'] = pool_recycle
 
-    try:
-        # Allow the user to specify an encoding for their DB otherwise default
-        # to utf-8 so jobs & users with non-latin1 characters can still use
-        # us.
-        engine_args['encoding'] = conf.get('core', 'SQL_ENGINE_ENCODING')
-    except conf.AirflowConfigException:
-        engine_args['encoding'] = 'utf-8'
+    # Allow the user to specify an encoding for their DB otherwise default
+    # to utf-8 so jobs & users with non-latin1 characters can still use
+    # us.
+    engine_args['encoding'] = conf.get('core', 'SQL_ENGINE_ENCODING', fallback='utf-8')
     # For Python2 we get back a newstr and need a str
     engine_args['encoding'] = engine_args['encoding'].__str__()
 
@@ -190,7 +187,10 @@ def configure_orm(disable_connection_pool=False):
     setup_event_handlers(engine, reconnect_timeout)
 
     Session = scoped_session(
-        sessionmaker(autocommit=False, autoflush=False, bind=engine))
+        sessionmaker(autocommit=False,
+                     autoflush=False,
+                     bind=engine,
+                     expire_on_commit=False))
 
 
 def dispose_orm():
@@ -222,10 +222,7 @@ def configure_adapters():
 
 
 def validate_session():
-    try:
-        worker_precheck = conf.getboolean('core', 'worker_precheck')
-    except conf.AirflowConfigException:
-        worker_precheck = False
+    worker_precheck = conf.getboolean('core', 'worker_precheck', fallback=False)
     if not worker_precheck:
         return True
     else:
@@ -256,7 +253,7 @@ try:
 except Exception:
     pass
 
-configure_logging()
+logging_class_path = configure_logging()
 configure_vars()
 configure_adapters()
 # The webservers import this file from models.py with the default settings.

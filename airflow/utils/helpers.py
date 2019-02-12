@@ -22,19 +22,20 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import errno
+import imp
+import sys
+import warnings
+
 import psutil
 
 from builtins import input
 from past.builtins import basestring
 from datetime import datetime
 from functools import reduce
-import imp
 import os
 import re
 import signal
-import subprocess
-import sys
-import warnings
 
 from jinja2 import Template
 
@@ -127,7 +128,7 @@ def chunks(items, chunk_size):
     """
     Yield successive chunks of a given size from a list of items
     """
-    if (chunk_size <= 0):
+    if chunk_size <= 0:
         raise ValueError('Chunk size must be a positive integer')
     for i in range(0, len(items), chunk_size):
         yield items[i:i + chunk_size]
@@ -169,6 +170,37 @@ def chain(*tasks):
     """
     for up_task, down_task in zip(tasks[:-1], tasks[1:]):
         up_task.set_downstream(down_task)
+
+
+def cross_downstream(from_tasks, to_tasks):
+    r"""
+    Set downstream dependencies for all tasks in from_tasks to all tasks in to_tasks.
+    E.g.: cross_downstream(from_tasks=[t1, t2, t3], to_tasks=[t4, t5, t6])
+    Is equivalent to:
+
+    t1 --> t4
+       \ /
+    t2 -X> t5
+       / \
+    t3 --> t6
+
+    t1.set_downstream(t4)
+    t1.set_downstream(t5)
+    t1.set_downstream(t6)
+    t2.set_downstream(t4)
+    t2.set_downstream(t5)
+    t2.set_downstream(t6)
+    t3.set_downstream(t4)
+    t3.set_downstream(t5)
+    t3.set_downstream(t6)
+
+    :param from_tasks: List of tasks to start from.
+    :type from_tasks: List[airflow.models.BaseOperator]
+    :param to_tasks: List of tasks to set as downstream dependencies.
+    :type to_tasks: List[airflow.models.BaseOperator]
+    """
+    for task in from_tasks:
+        task.set_downstream(to_tasks)
 
 
 def pprinttable(rows):
@@ -226,6 +258,7 @@ def reap_process_group(pid, log, sig=signal.SIGTERM,
     :param sig: signal type
     :param timeout: how much time a process has to terminate
     """
+
     def on_terminate(p):
         log.info("Process %s (%s) terminated with exit code %s", p, p.pid, p.returncode)
 
@@ -237,7 +270,15 @@ def reap_process_group(pid, log, sig=signal.SIGTERM,
     children = parent.children(recursive=True)
     children.append(parent)
 
-    log.info("Sending %s to GPID %s", sig, os.getpgid(pid))
+    try:
+        pg = os.getpgid(pid)
+    except OSError as err:
+        # Skip if not such process - we experience a race and it just terminated
+        if err.errno == errno.ESRCH:
+            return
+        raise
+
+    log.info("Sending %s to GPID %s", sig, pg)
     os.killpg(os.getpgid(pid), sig)
 
     gone, alive = psutil.wait_procs(children, timeout=timeout, callback=on_terminate)

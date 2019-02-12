@@ -15,7 +15,7 @@
 # limitations under the License.
 import re
 
-from apiclient import errors
+from googleapiclient.errors import HttpError
 
 from airflow.contrib.hooks.gcp_mlengine_hook import MLEngineHook
 from airflow.exceptions import AirflowException
@@ -42,7 +42,7 @@ def _normalize_mlengine_job_id(job_id):
 
     # Add a prefix when a job_id starts with a digit or a template
     match = re.search(r'\d|\{{2}', job_id)
-    if match and match.start() is 0:
+    if match and match.start() == 0:
         job = 'z_{}'.format(job_id)
     else:
         job = job_id
@@ -68,17 +68,16 @@ class MLEngineBatchPredictionOperator(BaseOperator):
 
     NOTE: For model origin, users should consider exactly one from the
     three options below:
-    1. Populate 'uri' field only, which should be a GCS location that
-    points to a tensorflow savedModel directory.
-    2. Populate 'model_name' field only, which refers to an existing
-    model, and the default version of the model will be used.
-    3. Populate both 'model_name' and 'version_name' fields, which
-    refers to a specific version of a specific model.
+
+    1. Populate ``uri`` field only, which should be a GCS location that
+       points to a tensorflow savedModel directory.
+    2. Populate ``model_name`` field only, which refers to an existing
+       model, and the default version of the model will be used.
+    3. Populate both ``model_name`` and ``version_name`` fields, which
+       refers to a specific version of a specific model.
 
     In options 2 and 3, both model and version name should contain the
-    minimal identifier. For instance, call
-
-    ::
+    minimal identifier. For instance, call::
 
         MLEngineBatchPredictionOperator(
             ...,
@@ -87,7 +86,7 @@ class MLEngineBatchPredictionOperator(BaseOperator):
             ...)
 
     if the desired model version is
-    "projects/my_project/models/my_model/versions/my_version".
+    ``projects/my_project/models/my_model/versions/my_version``.
 
     See https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs
     for further documentation on the parameters.
@@ -106,7 +105,7 @@ class MLEngineBatchPredictionOperator(BaseOperator):
     :type data_format: string
 
     :param input_paths: A list of GCS paths of input data for batch
-        prediction. Accepting wildcard operator *, but only at the end. (templated)
+        prediction. Accepting wildcard operator ``*``, but only at the end. (templated)
     :type input_paths: list of string
 
     :param output_path: The GCS path where the prediction results are
@@ -151,8 +150,8 @@ class MLEngineBatchPredictionOperator(BaseOperator):
         have doamin-wide delegation enabled.
     :type delegate_to: string
 
-    Raises:
-        ``ValueError``: if a unique model/version origin cannot be determined.
+    :raises: ``ValueError``: if a unique model/version origin cannot be
+        determined.
     """
 
     template_fields = [
@@ -264,7 +263,7 @@ class MLEngineBatchPredictionOperator(BaseOperator):
         try:
             finished_prediction_job = hook.create_job(
                 self._project_id, prediction_request, check_existing_job)
-        except errors.HttpError:
+        except HttpError:
             raise
 
         if finished_prediction_job['state'] != 'SUCCEEDED':
@@ -282,7 +281,6 @@ class MLEngineModelOperator(BaseOperator):
     :param project_id: The Google Cloud project name to which MLEngine
         model belongs. (templated)
     :type project_id: string
-
     :param model: A dictionary containing the information about the model.
         If the `operation` is `create`, then the `model` parameter should
         contain all the information about this model such as `name`.
@@ -290,15 +288,13 @@ class MLEngineModelOperator(BaseOperator):
         If the `operation` is `get`, the `model` parameter
         should contain the `name` of the model.
     :type model: dict
-
     :param operation: The operation to perform. Available operations are:
 
         * ``create``: Creates a new model as provided by the `model` parameter.
         * ``get``: Gets a particular model where the name is specified in `model`.
-
+    :type operation: string
     :param gcp_conn_id: The connection ID to use when fetching connection info.
     :type gcp_conn_id: string
-
     :param delegate_to: The account to impersonate, if any.
         For this to work, the service account making the request must have
         domain-wide delegation enabled.
@@ -604,7 +600,7 @@ class MLEngineTrainingOperator(BaseOperator):
         try:
             finished_training_job = hook.create_job(
                 self._project_id, training_request, check_existing_job)
-        except errors.HttpError:
+        except HttpError:
             raise
 
         if finished_training_job['state'] != 'SUCCEEDED':

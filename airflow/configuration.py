@@ -35,7 +35,7 @@ import subprocess
 import sys
 import warnings
 
-from backports.configparser import ConfigParser
+from backports.configparser import ConfigParser, _UNSET, NoOptionError
 from zope.deprecation import deprecated as _deprecated
 
 from airflow.exceptions import AirflowConfigException
@@ -246,7 +246,7 @@ class AirflowConfigParser(ConfigParser):
                 return option
 
         # ...then the default config
-        if self.airflow_defaults.has_option(section, key):
+        if self.airflow_defaults.has_option(section, key) or 'fallback' in kwargs:
             return expand_env_var(
                 self.airflow_defaults.get(section, key, **kwargs))
 
@@ -259,27 +259,27 @@ class AirflowConfigParser(ConfigParser):
                 "section/key [{section}/{key}] not found "
                 "in config".format(**locals()))
 
-    def getboolean(self, section, key):
-        val = str(self.get(section, key)).lower().strip()
+    def getboolean(self, section, key, **kwargs):
+        val = str(self.get(section, key, **kwargs)).lower().strip()
         if '#' in val:
             val = val.split('#')[0].strip()
-        if val.lower() in ('t', 'true', '1'):
+        if val in ('t', 'true', '1'):
             return True
-        elif val.lower() in ('f', 'false', '0'):
+        elif val in ('f', 'false', '0'):
             return False
         else:
             raise AirflowConfigException(
                 'The value for configuration option "{}:{}" is not a '
                 'boolean (received "{}").'.format(section, key, val))
 
-    def getint(self, section, key):
-        return int(self.get(section, key))
+    def getint(self, section, key, **kwargs):
+        return int(self.get(section, key, **kwargs))
 
-    def getfloat(self, section, key):
-        return float(self.get(section, key))
+    def getfloat(self, section, key, **kwargs):
+        return float(self.get(section, key, **kwargs))
 
-    def read(self, filenames):
-        super(AirflowConfigParser, self).read(filenames)
+    def read(self, filenames, **kwargs):
+        super(AirflowConfigParser, self).read(filenames, **kwargs)
         self._validate()
 
     def read_dict(self, *args, **kwargs):
@@ -290,9 +290,10 @@ class AirflowConfigParser(ConfigParser):
         try:
             # Using self.get() to avoid reimplementing the priority order
             # of config variables (env, config, cmd, defaults)
-            self.get(section, option)
+            # UNSET to avoid logging a warning about missing values
+            self.get(section, option, fallback=_UNSET)
             return True
-        except AirflowConfigException:
+        except NoOptionError:
             return False
 
     def remove_option(self, section, option, remove_default=True):
@@ -322,6 +323,12 @@ class AirflowConfigParser(ConfigParser):
 
         if section in self._sections:
             _section.update(copy.deepcopy(self._sections[section]))
+
+        section_prefix = 'AIRFLOW__{S}__'.format(S=section.upper())
+        for env_var in sorted(os.environ.keys()):
+            if env_var.startswith(section_prefix):
+                key = env_var.replace(section_prefix, '').lower()
+                _section[key] = self._get_env_var_option(section, key)
 
         for key, val in iteritems(_section):
             try:

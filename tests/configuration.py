@@ -7,9 +7,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -56,6 +56,8 @@ class ConfTest(unittest.TestCase):
         opt = conf.get('testsection', 'testpercent')
         self.assertEqual(opt, 'with%percent')
 
+        self.assertTrue(conf.has_option('testsection', 'testkey'))
+
     def test_conf_as_dict(self):
         cfg_dict = conf.as_dict()
 
@@ -95,7 +97,7 @@ class ConfTest(unittest.TestCase):
         self.assertEqual(cfg_dict['testsection']['testpercent'], 'with%%percent')
         self.assertEqual(cfg_dict['core']['percent'], 'with%%inside')
 
-    def test_command_config(self):
+    def test_command_precedence(self):
         TEST_CONFIG = '''[test]
 key1 = hello
 key2_cmd = printf cmd_result
@@ -122,6 +124,13 @@ key6 = value6
         self.assertEqual('airflow', test_conf.get('test', 'key3'))
         self.assertEqual('key4_result', test_conf.get('test', 'key4'))
         self.assertEqual('value6', test_conf.get('another', 'key6'))
+
+        self.assertEqual('hello', test_conf.get('test', 'key1', fallback='fb'))
+        self.assertEqual('value6', test_conf.get('another', 'key6', fallback='fb'))
+        self.assertEqual('fb', test_conf.get('another', 'key7', fallback='fb'))
+        self.assertEqual(True, test_conf.getboolean('another', 'key8_boolean', fallback='True'))
+        self.assertEqual(10, test_conf.getint('another', 'key8_int', fallback='10'))
+        self.assertEqual(1.0, test_conf.getfloat('another', 'key8_float', fallback='1'))
 
         self.assertTrue(test_conf.has_option('test', 'key1'))
         self.assertTrue(test_conf.has_option('test', 'key2'))
@@ -165,7 +174,7 @@ key1 = hello
 key1 = awesome
 key2 = airflow
 
-[another]
+[testsection]
 key3 = value3
 '''
         test_conf = AirflowConfigParser(
@@ -177,18 +186,18 @@ key3 = value3
             test_conf.getsection('test')
         )
         self.assertEqual(
-            OrderedDict([('key3', 'value3')]),
-            test_conf.getsection('another')
+            OrderedDict([
+                ('key3', 'value3'),
+                ('testkey', 'testvalue'),
+                ('testpercent', 'with%percent')]),
+            test_conf.getsection('testsection')
         )
 
     def test_broker_transport_options(self):
         section_dict = conf.getsection("celery_broker_transport_options")
         self.assertTrue(isinstance(section_dict['visibility_timeout'], int))
-
         self.assertTrue(isinstance(section_dict['_test_only_bool'], bool))
-
         self.assertTrue(isinstance(section_dict['_test_only_float'], float))
-
         self.assertTrue(isinstance(section_dict['_test_only_string'], six.string_types))
 
     def test_deprecated_options(self):
@@ -221,4 +230,9 @@ key3 = value3
         conf.set('celery', 'celery_result_backend_cmd', '/bin/echo 99')
 
         with self.assertWarns(DeprecationWarning):
+            tmp = None
+            if 'AIRFLOW__CELERY__RESULT_BACKEND' in os.environ:
+                tmp = os.environ.pop('AIRFLOW__CELERY__RESULT_BACKEND')
             self.assertEquals(conf.getint('celery', 'result_backend'), 99)
+            if tmp:
+                os.environ['AIRFLOW__CELERY__RESULT_BACKEND'] = tmp
