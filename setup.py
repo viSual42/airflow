@@ -207,7 +207,7 @@ hive = [
     'pyhive>=0.6.0',
 ]
 jdbc = ['jaydebeapi>=1.1.1']
-jenkins = ['python-jenkins>=0.4.15']
+jenkins = ['python-jenkins>=1.0.0']
 jira = ['JIRA>1.0.7']
 kerberos = ['pykerberos>=1.1.13',
             'requests_kerberos>=0.10.0',
@@ -223,7 +223,7 @@ password = [
     'bcrypt>=2.0.0',
     'flask-bcrypt>=0.7.1',
 ]
-pinot = ['pinotdb>=0.1.1']
+pinot = ['pinotdb==0.1.1']
 postgres = ['psycopg2>=2.7.4']
 qds = ['qds-sdk>=1.9.6']
 rabbitmq = ['librabbitmq>=1.6.1']
@@ -306,7 +306,7 @@ def do_setup():
             'configparser>=3.5.0, <3.6.0',
             'croniter>=0.3.17, <0.4',
             'dill>=0.2.2, <0.3',
-            'enum34~=1.1.6',
+            'enum34~=1.1.6;python_version<"3.4"',
             'flask>=0.12.4, <0.13',
             'flask-appbuilder==1.12.1',
             'flask-admin==1.5.2',
